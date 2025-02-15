@@ -1,43 +1,43 @@
-version: "3.8"
+# version: '3.9'
 
 services:
   postgres:
     container_name: postgres
-    image: postgres:17-alpine3.21
+    image: postgres:13.5
     restart: always
     environment:
       POSTGRES_HOST: postgres
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: mydb
+      POSTGRES_USER: prisma
+      POSTGRES_PASSWORD: topsecret
+      POSTGRES_DB: coreclinic
     volumes:
       # Use a named volume for persistence
       - postgres_data:/var/lib/postgresql/data
     ports:
-      - "5432:5432"
+      - '5432:5432'
 
   adminer:
     image: adminer
-    container_name: adminer-1
+    container_name: adminer
     restart: always
     ports:
       - 8080:8080
     depends_on:
       - postgres
 
-#   api:
-#     build:
-#       context: .
-#       dockerfile: Dockerfile.dev
-#     restart: always
-#     depends_on:
-#       - postgres
-#     ports:
-#       - '6001:6001'
-#     env_file:
-#       - .env
-#     volumes:
-#       - .:/app
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    restart: always
+    depends_on:
+      - postgres
+    ports:
+      - '3030:3030'
+    env_file:
+      - .env
+    volumes:
+      - .:/app
 
 volumes:
   # Define the named volume for PostgreSQL data persistence

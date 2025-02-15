@@ -1,0 +1,303 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                   Int               @id @default(autoincrement())
+  email                String            @unique @db.VarChar(100)
+  password             String            @db.VarChar(255)
+  isActive             Boolean           @default(true)
+  verified             Boolean           @default(false)
+  resetPasswordToken   String?           @db.VarChar(255)
+  role                 Role              @default(Manager)
+  profile              Profile?
+  // Schedule             Schedule[]
+  clinics              Clinic[]
+  cancellationLog      CancellationLog[] @relation("CancelationCreatedByUser")
+  appointment          Appointment[]     @relation("AppointmentCreatedByUser")
+  assignedAppointments Appointment[]     @relation("AppointmentAssignee")
+
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+  deletedAt         DateTime?
+  CancellationLog   CancellationLog? @relation(fields: [cancellationLogId], references: [id])
+  cancellationLogId Int?
+  UserClinic        UserClinic?
+
+  @@map("users")
+}
+
+model Clinic {
+  id       Int     @id @default(autoincrement())
+  name     String  @db.VarChar(255)
+  phone    String  @db.VarChar(50)
+  address  String? @db.VarChar(255)
+  manager  String? @db.VarChar(100)
+  email    String? @unique @db.VarChar(100)
+  isActive Boolean @default(true)
+
+  users           User[]
+  patients        Patient[]
+  appointments    Appointment[]
+  cancellationLog CancellationLog[]
+
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
+  deletedAt  DateTime? // No need for @default(null)
+  UserClinic UserClinic[]
+
+  @@map("clinics")
+}
+
+model UserClinic {
+  id Int @id @default(autoincrement())
+
+  userId Int  @unique
+  User   User @relation(fields: [userId], references: [id])
+
+  clinicId Int
+  Clinic   Clinic @relation(fields: [clinicId], references: [id])
+
+  @@map("users_clinics")
+}
+
+model Profile {
+  id             Int      @id @default(autoincrement())
+  firstName      String?  @db.VarChar(50)
+  lastName       String?  @db.VarChar(50)
+  phone          String?  @db.VarChar(50)
+  birthday       DateTime
+  socialId       String   @db.VarChar(100)
+  license        String?  @unique @db.VarChar(255)
+  specialization String?  @db.VarChar(150)
+  bio            String
+  gender         Gender
+
+  schedules    Schedule[]
+  appointments Appointment[]
+
+  userId Int  @unique
+  user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("users_profiles")
+}
+
+model Patient {
+  id        Int             @id @default(autoincrement())
+  firstName String?         @db.VarChar(50)
+  lastName  String?         @db.VarChar(50)
+  phone     String?         @db.VarChar(50)
+  gender    Gender
+  profile   PatientProfile?
+
+  clinicId    Int           @unique
+  clinic      Clinic        @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  Appointment Appointment[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("patients")
+}
+
+model PatientProfile {
+  id         Int      @id @default(autoincrement())
+  birthday   DateTime
+  Occupation String?  @db.VarChar(50)
+  length     Int?
+  weight     Decimal? @db.Decimal(10, 2)
+  history    String?
+
+  patientId Int     @unique
+  patient   Patient @relation(fields: [patientId], references: [id], onDelete: Cascade)
+
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+  TreatmentPlan    TreatmentPlan?
+  ProgressionNotes ProgressionNotes[]
+  Examination      Examination[]
+
+  @@map("patients_profiles")
+}
+
+model Appointment {
+  id              Int               @id @default(autoincrement())
+  status          AppointmentStatus @default(PENDING)
+  appointmentDate DateTime
+  reason          String?
+  note            String?
+
+  createdByUserId Int  @unique
+  user            User @relation(fields: [createdByUserId], references: [id], onDelete: Cascade, "AppointmentCreatedByUser")
+
+  assignedTo   User @relation(fields: [assignedToId], references: [id], "AppointmentAssignee")
+  assignedToId Int  @unique
+
+  clinicId Int    @unique
+  clinic   Clinic @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+
+  patientId Int     @unique
+  patient   Patient @relation(fields: [patientId], references: [id], onDelete: Cascade)
+
+  treatmentPlanId Int?           @unique
+  treatmentPlan   TreatmentPlan? @relation(fields: [treatmentPlanId], references: [id])
+
+  billId Int  @unique
+  bill   Bill @relation(fields: [billId], references: [id], onDelete: Cascade)
+
+  cancellationLog CancellationLog?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  Profile   Profile? @relation(fields: [profileId], references: [id])
+  profileId Int?
+
+  @@map("appointments")
+}
+
+model Schedule {
+  id            Int        @id @default(autoincrement())
+  dayOfWeek     DaysOfWeek
+  availableFrom DateTime
+  availableTo   DateTime
+
+  // userId Int  @unique
+  // user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  profile   Profile? @relation(fields: [profileId], references: [id])
+  profileId Int?
+
+  @@map("schedules")
+}
+
+model Bill {
+  id          Int           @id @default(autoincrement())
+  amount      Decimal
+  status      InvoiceStatus @default(Pending)
+  appointment Appointment?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("bills")
+}
+
+model TreatmentPlan {
+  id          Int           @id @default(autoincrement())
+  description String
+  appointment Appointment[]
+
+  PatientProfileId Int            @unique
+  patientProfile   PatientProfile @relation(fields: [PatientProfileId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("treatmentPlans")
+}
+
+model ProgressionNotes {
+  id          Int    @id @default(autoincrement())
+  description String
+
+  PatientProfileId Int            @unique
+  patientProfile   PatientProfile @relation(fields: [PatientProfileId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("progressionNotes")
+}
+
+model Examination {
+  id                           Int     @id @default(autoincrement())
+  subjectivePainScale          Int?
+  subjectiveLocation           String? @db.VarChar(255)
+  subjectiveDescription        String?
+  subjectiveAggravatingFactors String?
+  objectivePosture             String? @db.VarChar(255)
+  objectiveRegion              String? @db.VarChar(255)
+  objectivePhysiologicalMotion String?
+  palpation                    String?
+
+  PatientProfileId Int            @unique
+  patientProfile   PatientProfile @relation(fields: [PatientProfileId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("examinations")
+}
+
+model CancellationLog {
+  id          Int     @id @default(autoincrement())
+  action      String  @db.VarChar(255)
+  description String? @db.VarChar(255)
+
+  appointmentId Int         @unique
+  appointment   Appointment @relation(fields: [appointmentId], references: [id])
+
+  userId Int  @unique
+  user   User @relation(fields: [userId], references: [id], onDelete: Cascade, name: "CancelationCreatedByUser")
+
+  clinicId Int    @unique
+  clinic   Clinic @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+  User      User[]
+
+  @@map("cancellationLogs")
+}
+
+enum Gender {
+  MALE
+  FEMALE
+}
+
+enum Role {
+  SUPERADMIN
+  Manager
+  DOCTOR
+  USER
+}
+
+enum DaysOfWeek {
+  SATURDAY
+  SUNDAY
+  MONDAY
+  TUESDAY
+  WEDNESDAY
+  THURSDAY
+  FRIDAY
+}
+
+enum AppointmentStatus {
+  PENDING
+  COMPLETED
+  CANCELLED
+}
+
+enum InvoiceStatus {
+  Pending
+  Paid
+  Canceled
+}

@@ -15,10 +15,10 @@ RUN npm install
 COPY . .
 
 # Expose the port your app will run on
-EXPOSE 8080
+EXPOSE 3030
 
 # Copy and run the script
-# COPY ./scripts/run_app_dev.sh /app/scripts/run_app_dev.sh
-# RUN chmod +x /app/scripts/run_app_dev.sh
+COPY ./scripts/run_app_dev.sh /app/scripts/run_app_dev.sh
+RUN chmod +x /app/scripts/run_app_dev.sh
 
-# CMD ["/bin/sh", "-c", "/app/scripts/run_app_dev.sh"]
+CMD ["/bin/sh", "-c", "/app/scripts/run_app_dev.sh"]

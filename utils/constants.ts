@@ -1,4 +1,4 @@
-export const port = process.env.APP_PORT ?? 8080;
+export const port = process.env.APP_PORT ?? 3030;
 export const frontendUrl = process.env.FRONTEND_URL;
 
 export const jwtSecret = process.env.JWT_SECRET;
